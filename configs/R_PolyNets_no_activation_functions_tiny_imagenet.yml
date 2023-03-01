@@ -1,0 +1,37 @@
+comment: 'Parameters for R_PolyNets on TinyImageNet'
+learning_rate: 0.1 # change from 0.1
+
+dataset:
+  root: /content/drive/MyDrive/epfl_normalization_polynomials/datasets # please change the rootdir into the directory containing TinyImageNet dataset
+  batch_size: 64
+  db: tiny_imagenet #change from cifar
+  trainf: tiny-imagenet-download/tiny-imagenet-200/train
+  testf: tiny-imagenet-download/val_image
+
+model:
+  fn: models/R_PolyNets.py
+  name: R_PolyNets_wrapper
+  args:
+    train: True
+    use_activ: False 
+    use_alpha: False 
+    use_beta: False
+    n_lconvs: 1 
+    use_lactiv: False
+    norm_local: 0 
+    num_blocks: [2, 2, 2, 2] 
+    out_activ: False
+    norm_x: -1 
+    n_xconvs: 0
+    norm_layer: [a, a, a, 0] 
+    pool_adapt: True  
+    num_classes: 200 
+
+training_info:
+  total_epochs: 120
+  display_interval: 200
+  lr_milestones: [40, 60, 80, 100]
+  lr_gamma: 0.1 # change from 0.1
+  smoothing: 0.6
+  multi_step: False
+  exponential_step: True

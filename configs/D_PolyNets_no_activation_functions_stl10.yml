@@ -1,0 +1,46 @@
+comment: 'Parameters for D_PolyNets on STL10'
+learning_rate: 0.1
+
+dataset:
+  root: /tmp/
+  batch_size: 128
+  db: STL10
+
+model:
+  fn: models/D_PolyNets.py
+  name: D_PolyNets_wrapper
+  args:
+    train: True
+    use_alpha: True 
+    n_lconvs: 1 
+    use_lactiv: False 
+    norm_local: 0 
+    num_blocks: [2, 2, 2, 1] 
+    div_std: 0
+    n_xconvs: 0
+    norm_x: -1 
+    
+    norm_layer: [a, a, a, 0]
+    norm_pr: 2 
+    
+    out_activ: False
+    use_active: False
+    use_so_activ: False
+    use_pr_activ: False
+
+    
+    use_theta: True 
+    skip_con_dense: True   
+    use_pr_conv: True
+    n_channels: [64, 128, 256, 486]
+    pool_adapt: True
+
+
+training_info:
+  total_epochs: 120
+  display_interval: 200
+  lr_milestones: [40, 60, 80, 100]
+  lr_gamma: 0.1
+  smoothing: 0.1
+  multi_step: True
+  exponential_step: False

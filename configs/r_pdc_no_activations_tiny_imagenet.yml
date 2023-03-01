@@ -1,0 +1,41 @@
+comment: 'Parameters for R_PDC on TinyImageNet'
+learning_rate: 0.1
+
+dataset:
+  root: /content/drive/MyDrive/epfl_normalization_polynomials/datasets # please change the rootdir into the directory containing TinyImageNet dataset
+  batch_size: 64
+  db: tiny_imagenet #change from cifar
+  trainf: tiny-imagenet-download/tiny-imagenet-200/train
+  testf: tiny-imagenet-download/val_image
+
+model:
+  fn: models/R_PDC.py
+  name: R_PDC_wrapper
+  args:
+    train: True
+    use_activ: False
+    use_alpha: True
+    n_lconvs: 1
+    use_lactiv: False
+    norm_local: 1
+    num_blocks: [2, 2, 2, 1]
+    kern_loc: 3
+    kern_loc_so: 3
+    norm_x: -1
+    out_activ: False
+    n_channels: [64, 128, 256, 256] 
+    planes_ho:  [64, 64, 128, 128]
+    norm_layer: [a, a, a, 0] 
+    use_only_first_conv: False
+    num_classes: 200
+    pool_adapt: True  
+    norm_local: 0
+
+training_info:
+  total_epochs: 120
+  display_interval: 200
+  lr_milestones: [40, 60, 80, 100]
+  lr_gamma: 0.1
+  smoothing: 0.6
+  multi_step: False
+  exponential_step: True
