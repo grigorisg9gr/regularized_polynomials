@@ -16,7 +16,7 @@ Browsing the folders
 ====================
 The folder structure is the following:
 
-*    ``models_ours``: The folder contains the neural network architectures of R-PolyNets, D-PolyNets, R-PDC and D-PDC.
+*    ``models``: The folder contains the neural network architectures of R-PolyNets, D-PolyNets, R-PDC and D-PDC.
 
 *    ``configs``: The folder contains the yml files for the configuration, e.g., epochs to run, learning rate changes. Most of the options for hyper-parameters can be changed here and are propagated to the network. For instance, you can change the dataset from CIFAR10 to CIFAR100 by changing the respective name in yml.
 
