@@ -62,7 +62,7 @@ class BasicBlock(nn.Module):
                  kern_prev=1, norm_pr=-1, dropout=0, train=True, limit_pr=None, sn=False, 
                  sum_prev=False, additive_gn=0, skip_con_dense=False, use_first_dense=True, 
                  use_sep_short=False, block_id=None, use_sep_short_all=False, use_xlconv=True, 
-                 use_full_prev_poly=False, use_theta=False, random_scaling=False, in_planes_ho=0, **kwargs):
+                 use_full_prev_poly=False, use_theta=False, random_scaling=False, in_planes_ho=0, start_block=0, **kwargs):
         """
         D-PDC block. The difference from Pi-net residual block, is that in each block we
         also perform one dense connection from previous blocks. That means that during forward, we pass two inputs.
@@ -129,8 +129,9 @@ class BasicBlock(nn.Module):
         self.sum_prev = sum_prev
         self.additive_gn = additive_gn
         self.skip_con_dense = skip_con_dense
-        # # self.use_fd: If True, then we want to start indexing at zero, else at 1.
-        self.use_fd = 1 - int(use_first_dense)
+
+        # # self.use_fd: index of the start block to transmit the polynomial. The default is zero.
+        self.use_fd = int(start_block)        
         self.use_sep_short = use_sep_short
         self.block_id = block_id
         self.use_sep_short_all = use_sep_short_all

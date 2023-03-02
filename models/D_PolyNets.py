@@ -95,8 +95,8 @@ class BasicBlock(nn.Module):
         self.sum_prev = sum_prev
         self.additive_gn = additive_gn
         self.skip_con_dense = skip_con_dense
-        # # self.use_fd: If True, then we want to start indexing at zero, else at 1.
-        # self.use_fd = 1 - int(use_first_dense)
+
+        # # self.use_fd: index of the start block to transmit the polynomial. The default is zero.
         self.use_fd = int(start_block)
         self.use_sep_short = use_sep_short
         self.block_id = block_id
