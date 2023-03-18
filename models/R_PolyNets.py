@@ -51,9 +51,9 @@ def get_norm(norm_local):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, use_activ=True, use_alpha=False, n_lconvs=0,
+    def __init__(self, in_planes, planes, stride=1, use_activ=False, use_alpha=True, n_lconvs=1,
                  norm_local=None, kern_loc=1, norm_layer=2, norm_x=-1,
-                 n_xconvs=0, use_only_first_conv=False, use_dropout=False, **kwargs):
+                 use_only_first_conv=False, use_dropout=False, **kwargs):
         """
         R-PolyNets residual block. 
         :param use_activ: bool; if True, use activation functions in the block.
@@ -64,7 +64,6 @@ class BasicBlock(nn.Module):
         :param kern_loc: int
         :param norm_layer: int; the type of normalization scheme for the first order term.
         :param norm_x: int; the type of normalization scheme for the 'x' (shortcut one).
-        :param n_xconvs: int; the number of convolutional layers for 'x' (shortcut one).
         :param use_only_first_conv: bool;
         :param use_dropout:
         :param kwargs:
@@ -80,7 +79,6 @@ class BasicBlock(nn.Module):
         self.use_activ = use_activ
         # # define some 'local' convolutions, i.e. for the second order term only.
         self.n_lconvs = n_lconvs
-        self.n_xconvs = n_xconvs
         self.use_only_first_conv = use_only_first_conv
 
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
@@ -124,7 +122,6 @@ class BasicBlock(nn.Module):
         # # define 'local' convs, i.e. applied only to second order term, either
         # # on x or after the multiplication.
         self.def_local_convs(planes, n_lconvs, kern_loc, self._norm_local, key='l')
-        self.def_local_convs(planes1, n_xconvs, kern_loc, self._norm_x, key='x')
             
         print('norm layer: {}'.format(norm_layer))
         print('norm_x: {}'.format(norm_x))
@@ -141,8 +138,6 @@ class BasicBlock(nn.Module):
         # # normalize the x (shortcut one).
         x1 = self.normx(self.shortcut(x))
         # second order
-        x1 = self.apply_local_convs(x1, self.n_xconvs, key='x')      
-
         out_so = out * x1
 
         out_so = self.apply_local_convs(out_so, self.n_lconvs, key='l')        
