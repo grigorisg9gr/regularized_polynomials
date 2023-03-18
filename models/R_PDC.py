@@ -1,10 +1,9 @@
-'''ResNet in PyTorch.
-
-For Pre-activation ResNet, see 'preact_resnet.py'.
+'''
+R-PDC in PyTorch.
 
 Reference:
-[1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    Deep Residual Learning for Image Recognition. arXiv:1512.03385
+[1] Grigorios Chrysos, Bohan Wang, Jiankang Deng, Volkan Cevher. "Regularization of polynomial networks for image recognition", CVPR'23. 
+
 '''
 from math import gcd
 from functools import partial
