@@ -13,13 +13,9 @@ model:
     train: True
     use_activ: False 
     use_alpha: True 
-    use_beta: False
     n_lconvs: 1
-    use_lactiv: False
     norm_local: 0 
     num_blocks: [2,2,2,2] # change from [2,2,2,2] 
-    out_activ: False
-    div_std: False
     norm_x: -1 
     n_xconvs: 0
     norm_layer: [a, a, a, 0] # add change from 0

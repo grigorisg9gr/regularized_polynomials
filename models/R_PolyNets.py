@@ -51,9 +51,9 @@ def get_norm(norm_local):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, use_activ=True, use_alpha=False, use_beta=False, n_lconvs=0, 
-                 norm_local=None, kern_loc=1, norm_layer=2, use_lactiv=False, norm_x=-1,
-                 n_xconvs=0, what_lactiv=-1, use_only_first_conv=False, div_factor=1, use_dropout=False, **kwargs):
+    def __init__(self, in_planes, planes, stride=1, use_activ=True, use_alpha=False, n_lconvs=0,
+                 norm_local=None, kern_loc=1, norm_layer=2, norm_x=-1,
+                 n_xconvs=0, use_only_first_conv=False, use_dropout=False, **kwargs):
         """
         R-PolyNets residual block. 
         :param use_activ: bool; if True, use activation functions in the block.
@@ -63,12 +63,9 @@ class BasicBlock(nn.Module):
         :param norm_local: int; the type of normalization scheme for the second order term.
         :param kern_loc: int
         :param norm_layer: int; the type of normalization scheme for the first order term.
-        :param use_lactiv: bool; if True, use activation functions for the second order term and 'x' (shortcut one).
         :param norm_x: int; the type of normalization scheme for the 'x' (shortcut one).
         :param n_xconvs: int; the number of convolutional layers for 'x' (shortcut one).
-        :param what_lactiv: int; the type of the activation function for the second order term.
         :param use_only_first_conv: bool;
-        :param div_factor: 
         :param use_dropout:
         :param kwargs:
         """                 
@@ -84,9 +81,7 @@ class BasicBlock(nn.Module):
         # # define some 'local' convolutions, i.e. for the second order term only.
         self.n_lconvs = n_lconvs
         self.n_xconvs = n_xconvs
-        self.use_lactiv = self.use_activ and use_lactiv
         self.use_only_first_conv = use_only_first_conv
-        self.div_factor = div_factor
 
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         
@@ -99,7 +94,6 @@ class BasicBlock(nn.Module):
             self._norm_layer = nn.BatchNorm2d
         else:
             self.bn1 = self._norm_layer(planes)
-            
             
         if not self.use_only_first_conv:
             self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
@@ -125,20 +119,8 @@ class BasicBlock(nn.Module):
         if self.use_alpha:
             self.alpha = nn.Parameter(torch.zeros(1))
             self.monitor_alpha = []
-        
-        self.use_beta = use_beta
-        if self.use_beta:
-            self.beta = nn.Parameter(torch.zeros(1))
-            self.monitor_beta = []
+
         self.normx = self._norm_x(planes1)
-        if self.use_lactiv:
-            if what_lactiv == -1:
-                ac1 = nn.ReLU(inplace=True)
-            elif what_lactiv == 1:
-                ac1 = nn.Softmax2d()
-            elif what_lactiv == 2:
-                ac1 = nn.LeakyReLU(inplace=True)
-        self.lactiv = partial(ac1) if self.use_lactiv else lambda x: x
         # # define 'local' convs, i.e. applied only to second order term, either
         # # on x or after the multiplication.
         self.def_local_convs(planes, n_lconvs, kern_loc, self._norm_local, key='l')
@@ -148,7 +130,6 @@ class BasicBlock(nn.Module):
         print('norm_x: {}'.format(norm_x))
         print('norm_local: {}'.format(norm_local))
         print('use drop out: {}'.format(self.use_dropout))
-        print('use beta: {}'.format(self.use_beta))
         
     def forward(self, x):
         out = self.activ(self.bn1(self.conv1(x)))
@@ -156,9 +137,6 @@ class BasicBlock(nn.Module):
         if not self.use_only_first_conv:
             out = self.bn2(self.conv2(out))
         # multiple out with beta
-        if self.use_beta: 
-           out = self.beta * out
-           self.monitor_beta.append(self.beta)
         out1 = out + self.shortcut(x)
         # # normalize the x (shortcut one).
         x1 = self.normx(self.shortcut(x))
@@ -167,8 +145,6 @@ class BasicBlock(nn.Module):
 
         out_so = out * x1
 
-        if self.div_factor != 1:
-            out_so = out_so * 1. / self.div_factor
         out_so = self.apply_local_convs(out_so, self.n_lconvs, key='l')        
         if self.use_alpha:
             out1 += self.alpha * out_so
@@ -198,12 +174,12 @@ class BasicBlock(nn.Module):
         if n_lconvs > 0:
             for i in range(n_lconvs):
                 out_so = getattr(self, '{}conv{}'.format(key, i))(out_so)
-                out_so = self.lactiv(getattr(self, '{}bn{}'.format(key, i))(out_so))
+                out_so = getattr(self, '{}bn{}'.format(key, i))(out_so)
 
         return out_so
 
 class R_PolyNets(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10, norm_layer=None, norm_x=None, out_activ=False,
+    def __init__(self, block, num_blocks, num_classes=10, norm_layer=None,
                  pool_adapt=False, n_channels=[64, 128, 256, 512], ch_in=3, **kwargs):
         super(R_PolyNets, self).__init__()
 
@@ -231,7 +207,6 @@ class R_PolyNets(nn.Module):
             n_norm_layer = nn.BatchNorm2d
             
         self._norm_layer = n_norm_layer
-        self.out_activ = out_activ
         assert len(n_channels) >= 4
         self.n_channels = n_channels
         self.pool_adapt = pool_adapt
@@ -239,7 +214,6 @@ class R_PolyNets(nn.Module):
             self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         else:
             self.avg_pool = partial(F.avg_pool2d, kernel_size=4)
-            
 
         self.conv1 = nn.Conv2d(ch_in, n_channels[0], kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = self._norm_layer(n_channels[0])
@@ -248,10 +222,6 @@ class R_PolyNets(nn.Module):
         self.layer3 = self._make_layer(block, n_channels[2], num_blocks[2], stride=2, norm_layer=norm_layer[2], **kwargs)
         self.layer4 = self._make_layer(block, n_channels[3], num_blocks[3], stride=2, norm_layer=norm_layer[3], **kwargs)
         self.linear = nn.Linear(n_channels[-1] * block.expansion, num_classes)
-        # # if linear case and requested, include an output non-linearity.
-        cond = self.out_activ and self.activ(-100) == -100
-        self.oactiv = partial(nn.ReLU(inplace=True)) if cond else lambda x: x
-        print('output non-linearity: #', self.out_activ, cond)
         
         # # define the hook
         for name, layer in self.named_children():
@@ -283,8 +253,6 @@ class R_PolyNets(nn.Module):
         out = self.dropblock2(self.maxpool(self.layer2(out)))
         out = self.maxpool(self.layer3(out))
         out = self.layer4(out)
-        if self.out_activ:
-            out = self.oactiv(out)
         out = self.avg_pool(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
