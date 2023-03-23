@@ -206,9 +206,6 @@ def return_loaders(root, batch_size, test_bs=None, db='mnist', degrees=None, rsz
         train_loader = _loader(trainset, batch_size, train=True, **kwargs)
         test_loader = _loader(testset, batch_size, train=False, **kwargs)
         return train_loader, test_loader
-    elif db == 'MedMnist':
-        trainset = MedMnist_specific(root, mode='train', **kwargs)
-        testset = MedMnist_specific(root, mode='test', **kwargs)
     elif db == 'CUB':
         trainset, testset = get_cub_db(root, **kwargs)
         print('Loaded imagenet, with length {}.'.format(len(trainset)))
@@ -264,21 +261,6 @@ def return_loaders(root, batch_size, test_bs=None, db='mnist', degrees=None, rsz
     if 'train' in kwargs.keys():
         del kwargs['train']
     
-    # split the data set into train set and validation set
-    # indices = list(range(len(trainset)))
-    # split = int(np.floor(0.8 * len(trainset)))
-    # train_indices = indices[:split]
-    # val_indices = indices[split:]
-    
-    # train_sampler = SequentialSampler(train_indices)
-    # valid_sampler = SequentialSampler(val_indices)
-    
-    # trainset_use = Subset(trainset, train_indices)
-    # val_set = Subset(trainset, val_indices)
-        
-    # train_loader = _loader(trainset_use, batch_size, train=True, **kwargs)
-    # val_loader = _loader(val_set, batch_size, train=False, **kwargs)
-
     train_loader = _loader(trainset, batch_size, train=True, **kwargs)
     val_loader = _loader(testset, test_bs, train=False, **kwargs)
     
@@ -354,174 +336,6 @@ def reduce_classes_dbset_longtailed(db_set, permute=True, lt_factor=None):
     return data, classes
 
 
-class MedMnist_specific(Dataset):
-    def __init__(self, root, number_db=0, mode='train', transform=None, **kwargs):
-        # # https://medmnist.github.io/
-        root = '/content/drive/My Drive/epfl_normalization_polynomials/datasets/medmnist/medmnist/medmnist'
-        select_db = ['breastmnist', 'chestmnist',  'octmnist', 'pneumoniamnist',
-                 'organmnist_axial', 'organmnist_coronal', 'organmnist_sagittal',
-                 # # derma and pathmnist, retina have 3 channels; retina is not classification.
-                 'dermamnist', 'pathmnist', 'retinamnist']
-        self.root = root
-        #self.path = '{}{}.npz'.format(root, select_db[number_db])
-        self.path = '{}/{}.npz'.format(root, select_db[number_db])
-        npz = np.load(self.path)
-        # # load in self.data and convert unit8 to float32.
-        self.data = npz['{}_images'.format(mode)].astype(np.float32) / 255.
-        self.targets = npz['{}_labels'.format(mode)][:, 0].astype(np.int)
-        if transform is None:
-            transform = self._init_image_transform(**kwargs)
-        self.transform = transform
-
-    @staticmethod
-    def _init_image_transform(size=0, **kwargs):
-        trans = []
-        if size > 0:
-            trans.append(transforms.Resize((size, size)))
-        trans.append(transforms.ToTensor())
-        transform = transforms.Compose(trans)
-        return transform
-
-    def __getitem__(self, index):
-        obj, label = self.data[index], self.targets[index]
-        obj = self.transform(obj)
-        return obj, label
-
-    def __len__(self):
-        return len(self.data)
-
-
-def create_dataframe_emotion(root, **kwargs):
-    """ Auxiliary function to get the metadata for emotion recognition db (RAVDESS)."""
-    data_df = pd.DataFrame(columns=['path', 'source', 'actor', 'gender',
-                                    'intensity', 'statement', 'repetition', 'emotion'])
-    count, ims = 0, []
-    for i in sorted(listdir(root)):
-        file_list = listdir(root + i)
-        for f in file_list:
-            nm = f.split('.')[0].split('-')
-            path = root + i + sep + f
-            src = int(nm[1])
-            # # this is one-based by default.
-            actor = int(nm[-1])
-            # # convert the emotion (labels) to zero-based.
-            emotion = int(nm[2]) - 1
-
-            gender = 'female' if int(actor) % 2 == 0 else 'male'
-            intensity = 0 if nm[3] == '01' else 1
-            statement = 0 if nm[4] == '01' else 1
-            repeat = 0 if nm[5] == '01' else 1
-
-            data_df.loc[count] = [path, src, actor, gender, intensity, statement, repeat, emotion]
-            count += 1
-    return data_df
-
-
-class EmotionRecognition(Dataset):
-    def __init__(self, root, n_samples=None, transform=None, input_duration=3,
-                 train=True, test=False, train_until=19, valid_until=22, 
-                 n_mels=128, size_x=96, min_trim=15, max_trim=50, hop_length=512, 
-                 n_fft=2048, augment=False, stretch_rate=None, noise=None, **kwargs):
-        # # ensure librosa is installed.
-        import librosa
-        self.root = root
-        self.is_train = train
-        self.is_test = test
-        self.input_duration = input_duration
-        self.n_mels = n_mels
-        self.size_x = size_x
-        self.obj_list = create_dataframe_emotion(root, **kwargs)
-        self.max_trim = max_trim
-        self.min_trim = min_trim
-        self.hop_length = hop_length
-        self.n_fft = n_fft
-        self.augmentation = augment and train
-        self.noise = noise
-        self.stretch_rate = stretch_rate
-        if stretch_rate is not None:
-            self.strr = [min(stretch_rate, 1.), max(stretch_rate, 1.)]
-
-        if n_samples is not None:
-            self.obj_list = self.obj_list[:n_samples]
-        if transform is None:
-            transform = self._init_image_transform(**kwargs)
-        self.transform = transform
-        if self.is_train:
-            # # crop the last actors for validation/testing.
-            self.obj_list = self.obj_list[self.obj_list.actor < train_until]
-        elif not self.is_test:
-            # # crop for validation.
-            self.obj_list = self.obj_list[self.obj_list.actor >= train_until][self.obj_list.actor < valid_until]
-        else:
-            print('Final testing mode.')
-            self.obj_list = self.obj_list[self.obj_list.actor >= train_until] # valid_until]
-        self.obj_list = self.obj_list.reset_index(drop=True)
-
-    @staticmethod
-    def _init_image_transform(size=0, **kwargs):
-        trans = []
-        if size > 0:
-            trans.append(transforms.Resize((size, size)))
-        trans.append(transforms.ToTensor())
-        transform = transforms.Compose(trans)
-        return transform
-
-    def augment_data(self, data):
-        if not self.augmentation:
-            return data
-        if self.noise is not None:
-            noise_amp = self.noise * np.random.uniform() * np.amax(data)
-            data = data + noise_amp * np.random.normal(size=data.shape[0])
-        # # change dynamic value.
-        dyn_change = np.random.uniform(low=1.0, high=1.25)
-        data = data * dyn_change
-        if self.stretch_rate is not None:
-            stretch = np.random.uniform(low=self.strr[0], high=self.strr[1])
-            data = librosa.effects.time_stretch(data, stretch)
-        return data
-    
-    def _load_data(self, index):
-        # # load the data.
-        X, sample_rate = librosa.load(self.obj_list.path[index], res_type='kaiser_fast',
-                                      duration=self.input_duration, sr=22050*2, offset=0.5)
-        # # convert to spectrogram.
-        sh = self.size_x - 10
-        while sh < self.size_x:
-            aa , _ = librosa.effects.trim(X, top_db=np.random.randint(self.min_trim, self.max_trim),
-                                          frame_length=self.n_fft, hop_length=self.hop_length)
-            aa = self.augment_data(aa)
-            S = librosa.feature.melspectrogram(aa, sr=sample_rate, n_mels=self.n_mels, 
-                                               hop_length=self.hop_length, n_fft=self.n_fft)
-            sh = S.shape[1]
-        log_S = librosa.power_to_db(S, ref=np.max)
-        # # normalize in the [0, 1].
-        log_S = (log_S + 80) / 80
-        # # crop to ensure it's the same as the rest.
-        crop_x = log_S.shape[1] - self.size_x
-        if crop_x > 0:
-            st = np.random.randint(0, crop_x)
-            log_S = log_S[:, st: st + self.size_x]
-
-        return log_S, self.obj_list.emotion[index]
-
-    def __getitem__(self, index):
-        obj, label = self._load_data(index)
-        obj = self.transform(obj)
-        return obj, label
-
-    def __len__(self):
-        return len(self.obj_list)
-
-
-def wrapper_RAVDESS_list(root, train=True, test=False, **kwargs):
-    """
-    Thin wrapper that calls the EmotionRecognition class, i.e. it creates one
-    instance for the training and one instance for the testing db (RAVDESS).
-    :return: Two instances of the ObjectFilelist class (training and the validation).
-    """
-    trainset = EmotionRecognition(root, train=train, **kwargs)
-    valid_db = EmotionRecognition(root, train=False, test=test, **kwargs)
-    return trainset, valid_db
 
 
 
