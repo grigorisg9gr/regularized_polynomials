@@ -22,7 +22,6 @@ def get_norm(norm_local):
         norm_local = nn.BatchNorm2d
     elif norm_local == 1:
         norm_local = nn.InstanceNorm2d
-        #norm_local = partial(nn.InstanceNorm2d, affine=True)
     elif norm_local == 2:
        norm_local = IterNorm        
     elif isinstance(norm_local, int) and norm_local < 0:
@@ -34,11 +33,9 @@ class BasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1, use_activ=False, use_alpha=False, n_lconvs=0, 
-                 norm_local=None, kern_loc=1, norm_layer=None, use_lactiv=False, norm_x=-1,
-                 n_xconvs=0, what_lactiv=-1, use_only_first_conv=False, div_factor=1, 
-                 append_bef_norm=True, use_so_activ=False, use_pr_conv=False, use_pr_activ=False, 
-                 kern_prev=1, norm_pr=-1, dropout=0, train=True, limit_pr=None, sn=False, 
-                 sum_prev=False, additive_gn=0, skip_con_dense=False, use_first_dense=True, 
+                 norm_local=None, kern_loc=1, norm_layer=None, norm_x=-1, n_xconvs=0, append_bef_norm=True,
+                 use_pr_conv=False, kern_prev=1, norm_pr=-1, dropout=0, train=True, limit_pr=None,
+                 sum_prev=False, additive_gn=0, skip_con_dense=False,
                  use_sep_short=False, block_id=None, use_sep_short_all=False, use_xlconv=True, 
                  use_full_prev_poly=False, use_theta=False, random_scaling=False, start_block=0, **kwargs):
         """
@@ -50,19 +47,15 @@ class BasicBlock(nn.Module):
         :param norm_local: int; the type of normalization scheme for the higher order term.
         :param kern_loc:
         :param norm_layer: int; the type of normalization scheme for the first order term.
-        :param use_lactiv: bool; if True, use activation functions for the higher order term and 'x' (shortcut one).
         :param norm_x: int; the type of normalization scheme for the 'x' (shortcut one).
         :param n_xconvs:
-        :param use_so_activ: bool; if True, use activation functions after the multiplication.
         :param use_pr_conv: bool; if True, use convolutions in the dense representations.
-        :param use_pr_activ: bool; if True, use an activation in the dense representations.
         :param kern_prev:
         :param norm_pr: int; the type of normalization scheme for the dense representations.
         :param dropout: float; if positive, it uses that as a probability threshold to skip a dense connection
             multiplication.
         :param limit_pr: int; the number of previous Hadamard connections to include; if None, it
             multiplies with all of them.
-        :param sn: bool; if True use spectral normalization on the weights.
         :param sum_prev: bool; if True use a skip in the dense product.
         :param additive_gn: If 0, there is no Gaussian noise in the dense connections; if > 0, 
             it samples an Gaussian noise in every iteration for every connection.
@@ -77,16 +70,10 @@ class BasicBlock(nn.Module):
         # # define some 'local' convolutions, i.e. for the second order term only.
         self.n_lconvs = n_lconvs
         self.n_xconvs = n_xconvs
-        self.use_lactiv = self.use_activ and use_lactiv
-        self.use_only_first_conv = use_only_first_conv
-        self.div_factor = div_factor
         self.append_bef_norm = append_bef_norm
-        self.use_so_activ = self.use_activ and use_so_activ
         self.use_pr_conv = use_pr_conv
-        self.use_pr_activ = self.use_activ and use_pr_activ and use_pr_conv
         self.is_training = train
         self.dropout = dropout
-        self.sn = sn
         if limit_pr is None:
             limit_pr = 1000
         self.limit_prev = limit_pr
@@ -102,7 +89,6 @@ class BasicBlock(nn.Module):
         self.use_sep_short_all = use_sep_short_all
         self.use_xlconv = use_xlconv
         self.use_full_prev_poly = use_full_prev_poly
-       
 
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         
@@ -114,14 +100,9 @@ class BasicBlock(nn.Module):
             self._norm_layer = nn.BatchNorm2d        
         else:
           self.bn1 = self._norm_layer(planes)
-        
-        if sn:
-            nn.utils.spectral_norm(self.conv1)
-        if not self.use_only_first_conv:
-            self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-            self.bn2 = self._norm_layer(planes)
-            if sn:
-                nn.utils.spectral_norm(self.conv2)
+
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = self._norm_layer(planes)
 
         self.shortcut = nn.Sequential()
         planes1 = in_planes
@@ -156,18 +137,6 @@ class BasicBlock(nn.Module):
             self.monitor_alpha = []
         self.normx = self._norm_x(planes1)
         self.normpr = self._norm_prev(planes1)
-        if 1:
-            if what_lactiv == -1:
-                ac1 = nn.ReLU(inplace=True)
-            elif what_lactiv == 1:
-                ac1 = nn.Softmax2d()
-            elif what_lactiv == 2:
-                ac1 = nn.LeakyReLU(inplace=True)
-            elif what_lactiv == 3:
-                ac1 = torch.tanh
-        self.lactiv = partial(ac1) if self.use_lactiv else lambda x: x
-        self.so_activ = partial(ac1) if self.use_so_activ else lambda x: x
-        self.pr_activ = partial(nn.ReLU(inplace=True)) if self.use_pr_activ else lambda x: x
         # # define 'local' convs, i.e. applied only to second order term, either
         # # on x or after the multiplication.
         self.def_local_convs(planes, n_lconvs, kern_loc, self._norm_local, key='l')
@@ -184,9 +153,6 @@ class BasicBlock(nn.Module):
         print('norm_local: {}'.format(norm_local))
         print('norm_prev: {}'.format(norm_pr))
         print('use active: {}'.format(self.use_activ))
-        print('use lconv active: {}'.format(self.use_lactiv))
-        print('use so active: {}'.format(self.use_so_activ))
-        print('use pr active: {}'.format(self.use_pr_activ))
         print('drop out: {}'.format(self.dropout))
         print('use xconv: {}'.format(self.use_xlconv))
         print('use pr conv: {}'.format(self.use_pr_conv))
@@ -196,7 +162,6 @@ class BasicBlock(nn.Module):
         print('add gaussian: {}'.format(self.additive_gn))
         print('skip dense connection: {}'.format(self.skip_con_dense))
         print('use full polynomials: {}'.format(self.use_full_prev_poly))
-        print('use sn: {}'.format(self.sn))
         print('use theta: {}'.format(self.use_theta))
         print('use alpha: {}'.format(self.use_alpha))
         print('use random scaling: {}'.format(self.random_scaling))
@@ -221,8 +186,7 @@ class BasicBlock(nn.Module):
     def forward(self, xa):
         x, second_ords = xa[0], xa[1]
         out = self.activ(self.bn1(self.conv1(x)))
-        if not self.use_only_first_conv:
-            out = self.bn2(self.conv2(out))
+        out = self.bn2(self.conv2(out))
         out1 = out + self.shortcut(x)
         # # normalize the x (shortcut one).
         x1 = self.normx(self.shortcut(x))
@@ -273,7 +237,7 @@ class BasicBlock(nn.Module):
         if not isinstance(out0, int) and not isinstance(out0, float):
             if self.use_pr_conv:
                 out0 = self.pr_conv(out0)
-            out0 = self.pr_activ(self.normpr(out0)) 
+            out0 = self.normpr(out0)
             
             #The code to use the skip connection and dropout
             if not self.skip_con_dense:
@@ -287,12 +251,9 @@ class BasicBlock(nn.Module):
         else:
             # # if out0 remained int (ie. due to dropout or len(second_ords) ==0).
             out_so = out * x1
-        out_so = self.so_activ(out_so)
 
         if self.append_bef_norm and not self.use_full_prev_poly:
             second_ords.append(out_so + 0)
-        if self.div_factor != 1:
-            out_so = out_so * 1. / self.div_factor
         if not self.append_bef_norm and not self.use_full_prev_poly:
             second_ords.append(out_so + 0)
         out_so = self.apply_local_convs(out_so, self.n_lconvs, key='l')
@@ -320,19 +281,17 @@ class BasicBlock(nn.Module):
             for i in range(n_lconvs):
                 setattr(self, '{}{}{}'.format(key, typet, i), convl())
                 setattr(self, '{}bn{}'.format(key, i), func_norm(planes))
-                if self.sn:
-                    nn.utils.spectral_norm(getattr(self, '{}{}{}'.format(key, typet, i)))
 
     def apply_local_convs(self, out_so, n_lconvs, key='l'):
         if n_lconvs > 0:
             for i in range(n_lconvs):
                 out_so = getattr(self, '{}conv{}'.format(key, i))(out_so)
-                out_so = self.lactiv(getattr(self, '{}bn{}'.format(key, i))(out_so))
+                out_so = getattr(self, '{}bn{}'.format(key, i))(out_so)
         return out_so
 
 
 class D_PolyNets(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10, norm_layer=None, out_activ=False,
+    def __init__(self, block, num_blocks, num_classes=10, norm_layer=None,
                  pool_adapt=False, n_channels=[64, 128, 256, 512], dropout=0, ch_in=3, **kwargs):
         super(D_PolyNets, self).__init__()
         
@@ -347,10 +306,7 @@ class D_PolyNets(nn.Module):
         if isinstance(norm_layer, list):
             n_norm_layer = nn.BatchNorm2d
 
-
-        #self._norm_layer = norm_layer
         self._norm_layer = n_norm_layer
-        self.out_activ = out_activ
         assert len(n_channels) >= 4
         self.n_channels = n_channels
         self.pool_adapt = pool_adapt
@@ -369,10 +325,6 @@ class D_PolyNets(nn.Module):
         self.layer3 = self._make_layer(block, n_channels[2], num_blocks[2], stride=2, norm_layer=norm_layer[2], dropout=dropout[2], **kwargs)
         self.layer4 = self._make_layer(block, n_channels[3], num_blocks[3], stride=2, norm_layer=norm_layer[3], dropout=dropout[3], **kwargs)
         self.linear = nn.Linear(n_channels[-1] * block.expansion, num_classes)
-        # # if linear case and requested, include an output non-linearity.
-        cond = self.out_activ and self.activ(-100) == -100
-        self.oactiv = partial(nn.ReLU(inplace=True)) if cond else lambda x: x
-        print('output non-linearity: #', self.out_activ, cond)
 
         # 16/N zero-mean gaussian initialization    
         for m in self.modules():
@@ -401,8 +353,6 @@ class D_PolyNets(nn.Module):
         out, second_ords = self.layer2([self.dropblock(self.maxpool(out)), second_ords])       
         out, second_ords = self.layer3([self.dropblock(self.maxpool(out)), second_ords])        
         out, second_ords = self.layer4([self.maxpool(out), second_ords])
-        if self.out_activ:
-            out = self.oactiv(out)
         out = self.avg_pool(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)

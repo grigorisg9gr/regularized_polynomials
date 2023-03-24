@@ -23,9 +23,6 @@ model:
     out_activ: False
     n_channels: [64, 128, 192, 256]
     planes_ho:  [64, 64, 128, 128]
-    
-    use_only_first_conv: False
-
     use_active: False
     use_so_activ: False
     use_pr_activ: False    

@@ -18,15 +18,10 @@ model:
     num_blocks: [2, 2, 2, 1] 
     div_std: 0
     n_xconvs: 0
-    norm_x: -1 
-    
+    norm_x: -1
     norm_layer: [a, a, a, 0]
     norm_pr: 2 
-
-    out_activ: False
-    use_active: False
-    use_so_activ: False
-    use_pr_activ: False
+    use_activ: False
         
     use_theta: True 
     skip_con_dense: True   

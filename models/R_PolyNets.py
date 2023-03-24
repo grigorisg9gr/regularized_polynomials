@@ -9,18 +9,13 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import logging
-import matplotlib.pyplot as plt
-from os.path import abspath, dirname, join, exists, isdir
-from os import curdir, makedirs
-
 import numpy as np
-
 import math
 
 from src.iterative_normalization import IterNorm
 from src.normalisation_scheme import SwitchNorm2d, DBN, IBN, BatchInstanceNorm2d 
 from dropblock import DropBlock2D, LinearScheduler
+
 
 def get_norm(norm_local):
     """ Define the appropriate function for normalization. """
@@ -30,7 +25,7 @@ def get_norm(norm_local):
         norm_local = nn.InstanceNorm2d
     elif norm_local == 2:
        norm_local = IterNorm
-    ### New normalization schemes
+    # # # New normalization schemes
     elif norm_local == 3:
         norm_local = SwitchNorm2d
     elif norm_local == 4:
@@ -52,8 +47,7 @@ class BasicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_planes, planes, stride=1, use_activ=False, use_alpha=True, n_lconvs=1,
-                 norm_local=None, kern_loc=1, norm_layer=2, norm_x=-1,
-                 use_only_first_conv=False, use_dropout=False, **kwargs):
+                 norm_local=None, kern_loc=1, norm_layer=2, norm_x=-1, **kwargs):
         """
         R-PolyNets residual block. 
         :param use_activ: bool; if True, use activation functions in the block.
@@ -64,14 +58,9 @@ class BasicBlock(nn.Module):
         :param kern_loc: int
         :param norm_layer: int; the type of normalization scheme for the first order term.
         :param norm_x: int; the type of normalization scheme for the 'x' (shortcut one).
-        :param use_only_first_conv: bool;
-        :param use_dropout:
         :param kwargs:
         """                 
         super(BasicBlock, self).__init__()
-        self.use_dropout = use_dropout
-        if use_dropout:
-            self.drop_out = nn.Dropout(p=0.2)
         
         self._norm_layer = get_norm(norm_layer)
         self._norm_local = get_norm(norm_local)
@@ -79,7 +68,6 @@ class BasicBlock(nn.Module):
         self.use_activ = use_activ
         # # define some 'local' convolutions, i.e. for the second order term only.
         self.n_lconvs = n_lconvs
-        self.use_only_first_conv = use_only_first_conv
 
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         
@@ -92,23 +80,22 @@ class BasicBlock(nn.Module):
             self._norm_layer = nn.BatchNorm2d
         else:
             self.bn1 = self._norm_layer(planes)
-            
-        if not self.use_only_first_conv:
-            self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-            self.bn2 = self._norm_layer(planes)
+
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = self._norm_layer(planes)
 
         self.shortcut = nn.Sequential()
         planes1 = in_planes
         if stride != 1 or in_planes != self.expansion*planes:
             if norm_layer == 6:
                 self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
-                self._norm_layer(num_channels = self.expansion*planes)
+                    nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
+                    self._norm_layer(num_channels = self.expansion*planes)
                 )
             else:
                 self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
-                self._norm_layer(self.expansion*planes)
+                    nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
+                    self._norm_layer(self.expansion*planes)
                 )
             planes1 = self.expansion * planes
         self.activ = partial(nn.ReLU(inplace=True)) if self.use_activ else lambda x: x
@@ -126,13 +113,10 @@ class BasicBlock(nn.Module):
         print('norm layer: {}'.format(norm_layer))
         print('norm_x: {}'.format(norm_x))
         print('norm_local: {}'.format(norm_local))
-        print('use drop out: {}'.format(self.use_dropout))
         
     def forward(self, x):
         out = self.activ(self.bn1(self.conv1(x)))
-
-        if not self.use_only_first_conv:
-            out = self.bn2(self.conv2(out))
+        out = self.bn2(self.conv2(out))
         # multiple out with beta
         out1 = out + self.shortcut(x)
         # # normalize the x (shortcut one).
@@ -149,7 +133,6 @@ class BasicBlock(nn.Module):
        
         out = self.activ(out1)
         return out
-    
 
     def def_local_convs(self, planes, n_lconvs, kern_loc, func_norm, key='l', typet='conv'):
         """ Aux function to define the local conv/fc layers. """
@@ -173,6 +156,7 @@ class BasicBlock(nn.Module):
 
         return out_so
 
+
 class R_PolyNets(nn.Module):
     def __init__(self, block, num_blocks, num_classes=10, norm_layer=None,
                  pool_adapt=False, n_channels=[64, 128, 256, 512], ch_in=3, **kwargs):
@@ -193,10 +177,7 @@ class R_PolyNets(nn.Module):
         self.dropblock1 = DropBlock2D(block_size=7, drop_prob=0.1)
         self.dropblock2 = DropBlock2D(block_size=7, drop_prob=0.1)
 
-        
         self.in_planes = n_channels[0]
-        #if norm_layer is None:
-        #    norm_layer = nn.BatchNorm2d
             
         if isinstance(norm_layer, list):
             n_norm_layer = nn.BatchNorm2d
@@ -253,10 +234,12 @@ class R_PolyNets(nn.Module):
         out = self.linear(out)
         return out
 
+
 def R_PolyNets_wrapper(num_blocks=None, **kwargs):
     if num_blocks is None:
         num_blocks = [1, 1, 1, 1]
     return R_PolyNets(BasicBlock, num_blocks, **kwargs)
+
 
 def test():
     net = R_PolyNets_wrapper()

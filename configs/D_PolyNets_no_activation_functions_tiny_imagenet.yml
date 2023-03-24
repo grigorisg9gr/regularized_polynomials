@@ -24,12 +24,7 @@ model:
     
     norm_layer: [a, a, a, 0]
     norm_pr: 2 
-    
-    out_activ: False
-    use_active: False
-    use_so_activ: False
-    use_pr_activ: False
-    
+    use_activ: False
     use_theta: True
     skip_con_dense: True   
     use_pr_conv: True
