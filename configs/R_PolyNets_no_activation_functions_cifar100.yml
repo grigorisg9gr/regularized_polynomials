@@ -11,7 +11,6 @@ model:
   name: R_PolyNets_wrapper
   args:
     train: True
-    use_activ: False
     num_classes: 100
     use_alpha: False
     n_lconvs: 1

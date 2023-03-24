@@ -46,13 +46,11 @@ def get_norm(norm_local):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, use_activ=False, use_alpha=True, n_lconvs=1,
+    def __init__(self, in_planes, planes, stride=1, use_alpha=True, n_lconvs=1,
                  norm_local=None, kern_loc=1, norm_layer=2, norm_x=-1, **kwargs):
         """
-        R-PolyNets residual block. 
-        :param use_activ: bool; if True, use activation functions in the block.
+        R-PolyNets residual block.
         :param use_alpha: bool; if True, use a learnable parameter to regularize the contribution of the second order term.
-        :param use_beta:  bool; if True, use a learnable parameter to regularize the contribution of the first order term.
         :param n_lconvs: int; the number of convolutional layers for the second order term.
         :param norm_local: int; the type of normalization scheme for the second order term.
         :param kern_loc: int
@@ -65,7 +63,6 @@ class BasicBlock(nn.Module):
         self._norm_layer = get_norm(norm_layer)
         self._norm_local = get_norm(norm_local)
         self._norm_x = get_norm(norm_x)
-        self.use_activ = use_activ
         # # define some 'local' convolutions, i.e. for the second order term only.
         self.n_lconvs = n_lconvs
 
@@ -98,7 +95,6 @@ class BasicBlock(nn.Module):
                     self._norm_layer(self.expansion*planes)
                 )
             planes1 = self.expansion * planes
-        self.activ = partial(nn.ReLU(inplace=True)) if self.use_activ else lambda x: x
         self.use_alpha = use_alpha
         
         if self.use_alpha:
@@ -115,7 +111,7 @@ class BasicBlock(nn.Module):
         print('norm_local: {}'.format(norm_local))
         
     def forward(self, x):
-        out = self.activ(self.bn1(self.conv1(x)))
+        out = self.bn1(self.conv1(x))
         out = self.bn2(self.conv2(out))
         # multiple out with beta
         out1 = out + self.shortcut(x)
@@ -130,9 +126,8 @@ class BasicBlock(nn.Module):
             self.monitor_alpha.append(self.alpha)
         else:
             out1 += out_so
-       
-        out = self.activ(out1)
-        return out
+
+        return out1
 
     def def_local_convs(self, planes, n_lconvs, kern_loc, func_norm, key='l', typet='conv'):
         """ Aux function to define the local conv/fc layers. """
@@ -220,11 +215,10 @@ class R_PolyNets(nn.Module):
                                norm_layer=norm_layer, **kwargs))
             self.in_planes = planes * block.expansion
         # # cheeky way to get the activation from the layer1, e.g. in no activation case.
-        self.activ = layers[0].activ
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.activ(self.bn1(self.conv1(x)))
+        out = self.bn1(self.conv1(x))
         out = self.dropblock1(self.maxpool(self.layer1(out)))
         out = self.dropblock2(self.maxpool(self.layer2(out)))
         out = self.maxpool(self.layer3(out))

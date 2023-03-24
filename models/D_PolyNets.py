@@ -168,8 +168,7 @@ class BasicBlock(nn.Module):
         print('use limit: {}'.format(self.limit_prev))
         print('start block: {}'.format(self.use_fd))
 
-
-        if self.dropout>0:
+        if self.dropout > 0:
           self.beta = 1/(1-self.dropout)
         else:
           self.beta = 1.0
@@ -180,8 +179,6 @@ class BasicBlock(nn.Module):
           print(self.theta)
         else:
           self.theta = 1.0
-
-
 
     def forward(self, xa):
         x, second_ords = xa[0], xa[1]
