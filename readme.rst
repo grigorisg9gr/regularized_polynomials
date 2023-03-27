@@ -7,7 +7,7 @@ Regularization of polynomial networks for image recognition
 	:alt: License
 
 .. image:: https://img.shields.io/badge/Preprint-ArXiv-blue.svg
-	:target: https://arxiv.org/abs/2104.07916
+	:target: https://arxiv.org/abs/2303.13896
 	:alt: ArXiv
 
 Official implementation of the image classification experiments in the CVPR'23 paper "**Regularization of polynomial networks for image recognition**".
@@ -37,7 +37,7 @@ You can choose any yml file in ``utils``.
 
 **Changing the dataset:** You can change the dataset by changing the name of the ``dataset/db`` field (in the yml). The datasets that exist by default in PyTorch, e.g., CIFAR10/CIFAR100/MNIST, are automatically downloaded if they do not exist. They are exported in the path ``dataset/root``.
 
-**Changing the model:** You have two options: a) change the ``model/name`` (in the yml) to the model you want, b) change the ``model/name`` and specify the number of of blocks with the argument ``num_blocks``.
+**Changing the model:** You have several options to change the model, e.g., by changing a) the ``model/name`` (in the yml) to the model you want, or b) by changing the ``model/name`` and specify the number of of blocks with the argument ``num_blocks``. Overall, to change the model, the best way to do this is to modify the yml arguments. 
 
 Citing
 ======
