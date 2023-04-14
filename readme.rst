@@ -45,11 +45,11 @@ If you use this code, please cite [1]_:
 
 *BibTeX*:: 
 
-  @inproceedings{
-  title={Regularization of polynomial networks for image recognition},
-  author={Chrysos, Grigorios and Wang, Bohan and Deng, Jiankang and Cevher, Volkan},
-  booktitle={Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year={2023}
+  @inproceedings{chrysos2023regularization,
+     title={Regularization of polynomial networks for image recognition},
+     author={Chrysos, Grigorios and Wang, Bohan and Deng, Jiankang and Cevher, Volkan},
+     booktitle={Conference on Computer Vision and Pattern Recognition (CVPR)},
+     year={2023}
   }
 
 
