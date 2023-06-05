@@ -17,7 +17,6 @@ model:
     use_alpha: True
     n_lconvs: 1
     use_lactiv: False
-    norm_local: 1
     num_blocks: [2, 2, 2, 1]
     kern_loc: 3
     kern_loc_so: 3

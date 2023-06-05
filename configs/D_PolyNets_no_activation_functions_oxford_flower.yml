@@ -28,7 +28,6 @@ model:
     use_theta: True 
     skip_con_dense: True   
     use_pr_conv: True
-    num_classes: 100
     n_channels: [64, 128, 256, 486] 
     pool_adapt: True 
     num_classes: 102 
