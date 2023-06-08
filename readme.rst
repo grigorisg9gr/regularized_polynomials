@@ -39,6 +39,12 @@ You can choose any yml file in ``utils``.
 
 **Changing the model:** You have several options to change the model, e.g., by changing a) the ``model/name`` (in the yml) to the model you want, or b) by changing the ``model/name`` and specify the number of of blocks with the argument ``num_blocks``. Overall, to change the model, the best way to do this is to modify the yml arguments. 
 
+Package Dependencies
+====================
+
+Apart from PyTorch, we use a number of standard packages. For instance, pandas, pyyaml and also dropblock. All of those can be install with the pip install command. 
+
+
 Citing
 ======
 If you use this code, please cite [1]_:
