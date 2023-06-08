@@ -10,7 +10,7 @@ Regularization of polynomial networks for image recognition
 	:target: https://arxiv.org/abs/2303.13896
 	:alt: ArXiv
 
-Official implementation of the image classification experiments in the CVPR'23 paper `"**Regularization of polynomial networks for image recognition**"`<https://openaccess.thecvf.com/content/CVPR2023/papers/Chrysos_Regularization_of_Polynomial_Networks_for_Image_Recognition_CVPR_2023_paper.pdf>.
+Official implementation of the image classification experiments in the CVPR'23 paper `"**Regularization of polynomial networks for image recognition**"<https://openaccess.thecvf.com/content/CVPR2023/papers/Chrysos_Regularization_of_Polynomial_Networks_for_Image_Recognition_CVPR_2023_paper.pdf>`.
 
 Browsing the folders
 ====================
